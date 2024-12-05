@@ -1,0 +1,11 @@
+/* Copyright 2024 Analog Devices, Inc. */
+
+/ {
+	leds {
+		compatible = "gpio-leds";
+		led1: led_1 {
+			gpios = <&gpio0 25 GPIO_ACTIVE_LOW>;
+			label = "Green LED";
+		};
+	};
+};

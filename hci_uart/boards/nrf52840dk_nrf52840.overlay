@@ -1,0 +1,8 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
+&uart0 {
+	compatible = "nordic,nrf-uart";
+	current-speed = <921600>;
+	status = "okay";
+	hw-flow-control;
+};
