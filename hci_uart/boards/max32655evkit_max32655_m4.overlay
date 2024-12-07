@@ -14,8 +14,7 @@
 	chosen {
 		zephyr,console = &uart0;
 		zephyr,shell-uart = &uart0;
-		zephyr,bt_uart = &uart2;
-		zephyr,bt_c2h_uart = &uart2;
+		zephyr,bt_c2h_uart = &uart3;
 	};
 };
 
@@ -24,7 +23,15 @@
 	current-speed = <115200>;
 };
 
-&uart2 {
-	status = "okay";
+/**
+ * LPUART 
+ */
+&uart3 {
+	pinctrl-0 = <&lpuartb_tx_p2_7 &lpuartb_rx_p2_6>;
+	pinctrl-names = "default";
 	current-speed = <115200>;
+	data-bits = <8>;
+	parity = "none";
+
+	status = "okay";
 };

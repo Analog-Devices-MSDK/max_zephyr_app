@@ -9,3 +9,28 @@
 		};
 	};
 };
+
+/ {
+	chosen {
+		zephyr,console = &uart3;
+		zephyr,shell-uart = &uart3;
+	};
+};
+
+&uart0 {
+	status = "okay";
+	current-speed = <115200>;
+};
+
+/**
+ * LPUART 
+ */
+&uart3 {
+	pinctrl-0 = <&lpuartb_tx_p2_7 &lpuartb_rx_p2_6>;
+	pinctrl-names = "default";
+	current-speed = <115200>;
+	data-bits = <8>;
+	parity = "none";
+
+	status = "okay";
+};
