@@ -33,10 +33,13 @@
 #define LOG_MODULE_NAME hci_uart
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
-#define SLEEP_TIME_MS 1000
+#define LIVE_LED_TOGGLE_TIME_MS		1000
+#define LED_R						0
+#define LED_G						1
 
-#define LED1_NODE DT_ALIAS(led1)
-static const struct gpio_dt_spec led_g = GPIO_DT_SPEC_GET(LED1_NODE, gpios);
+extern void zpLED_Init(unsigned int leds_cnt);
+extern int zpLED_Off(unsigned int idx);
+extern void zpLED_Toggle(unsigned int idx);
 
 static const struct device *const hci_uart_dev =
 	DEVICE_DT_GET(DT_CHOSEN(zephyr_bt_c2h_uart));
@@ -401,26 +404,18 @@ int main(void)
 
 	__ASSERT(hci_uart_dev, "UART device is NULL");
 
-	if (!gpio_is_ready_dt(&led_g))
-	{
-		return 0;
-	}
-
-	err = gpio_pin_configure_dt(&led_g, GPIO_OUTPUT_ACTIVE);
-	if (err < 0)
-	{
-		return 0;
-	}
+	zpLED_Init(2);
 
 	for (int i = 0; i < 5; ++i)
 	{
-		k_msleep(SLEEP_TIME_MS / 5);
-		err = gpio_pin_toggle_dt(&led_g);
-		if (err < 0)
-		{
-			return 0;
-		}
+		zpLED_Toggle(LED_R);
+		k_msleep(LIVE_LED_TOGGLE_TIME_MS / 5);
+		zpLED_Toggle(LED_G);
+		k_msleep(LIVE_LED_TOGGLE_TIME_MS / 5);
 	}
+
+	zpLED_Off(LED_R);
+	zpLED_Off(LED_G);
 
 	/* Enable the raw interface, this will in turn open the HCI driver */
 	bt_enable_raw(&rx_queue);
@@ -464,7 +459,7 @@ int main(void)
 
 	while (1)
 	{
-		err = gpio_pin_toggle_dt(&led_g);
+		zpLED_Toggle(LED_G);
 
 		struct net_buf *buf;
 

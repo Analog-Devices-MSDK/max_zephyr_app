@@ -8,29 +8,13 @@
 				"kind": "build",
 			},
 			"linux": {
-				"command": "${config:ZEPHYRPROJECT}/.venv/bin/west"
-			},
-			"windows": {
-				"command": "${config:ZEPHYRPROJECT}/.venv/Scripts/west.exe"
-			},
-			"osx": {
-				"command": "${config:ZEPHYRPROJECT}/.venv/bin/west",
-                "options": {
-                    "shell": {
-                    "executable": "/bin/bash",
-                    "args": ["-c"]
-                    }
-                }
-			},
+                "type": "shell",
+				"command": "bash"
+			},			
 			"args": [
-				"build",
-				"-p",
-				"${input:pristine}",
-				"-b",
-				"${input:board}",
-                "-d",
-                "~/zephyrproject/zephyr/build"            
-			],
+                "-c",
+                "source ~/zephyrproject/.venv/bin/activate && source ~/zephyrproject/zephyr/zephyr-env.sh && ${userHome}/zephyrproject/.venv/bin/west build -p ${input:pristine} -b ${input:board}"
+            ],
 			"problemMatcher": [
 				"$gcc"
 			]
@@ -39,20 +23,13 @@
             "label": "build",
             "type": "shell",
             "linux": {
-				"command": "${config:ZEPHYRPROJECT}/.venv/bin/west"
-			},
-			"windows": {
-				"command": "$${config:ZEPHYRPROJECT}/.venv/Scripts/west.exe"
-			},
-			"osx": {
-				"command": "${config:ZEPHYRPROJECT}/.venv/bin/west build -p auto -b max32655evkit/max32655/m4 -d ~/zephyrproject/zephyr/build",
-                "options": {
-                    "shell": {
-                    "executable": "/bin/bash",
-                    "args": ["-c"]
-                    }
-                },
-			},
+                "type": "shell",
+				"command": "bash"
+			},			
+			"args": [
+                "-c",
+                "source ~/zephyrproject/.venv/bin/activate && source ~/zephyrproject/zephyr/zephyr-env.sh && ~/zephyrproject/.venv/bin/west build -p auto -b ${input:board}"
+            ],
 			"problemMatcher": [
 				"$gcc"
 			],
@@ -60,14 +37,54 @@
 				"kind": "build",
 				"isDefault": true
 			}
+        },        
+        {
+            "label": "flash",
+            "type": "shell",
+            "command": "arm-none-eabi-gdb",
+            "args": [
+                "--cd=\"${workspaceFolder}\"",
+                "--se=\"build/zephyr/${config:program_file}\"",
+                "--symbols=build/zephyr/${config:symbol_file}",
+                "-x=\"${workspaceFolder}/.vscode/flash.gdb\"",
+                "--ex=\"flash_m4 ${config:OCD_path} ${config:M4_OCD_interface_file} ${config:M4_OCD_target_file}\"",
+                "--batch"
+            ],
+            "group": "build",
+            "problemMatcher": [],
+            "dependsOn":["build"]
         },
         {
             "label": "flash & run",
             "type": "shell",
-            "command": "/Users/$USER/MaximSDK/Tools/OpenOCD/openocd -s /Users/$USER/MaximSDK/Tools/OpenOCD/scripts -f interface/cmsis-dap.cfg -f target/max32655.cfg -c \"program /Users/$USER/zephyrproject/zephyr/build/zephyr/zephyr.elf verify reset exit\"",
+            "command": "arm-none-eabi-gdb",
+            "args": [
+                "--cd=\"${workspaceFolder}\"",
+                "--se=\"build/zephyr/${config:program_file}\"",
+                "--symbols=build/zephyr/${config:symbol_file}",
+                "-x=\"${workspaceFolder}/.vscode/flash.gdb\"",
+                "--ex=\"flash_m4_run ${config:OCD_path} ${config:M4_OCD_interface_file} ${config:M4_OCD_target_file}\"",
+                "--batch"
+            ],
             "group": "build",
             "problemMatcher": [],
             "dependsOn":["build"]
+        },
+        {
+            "label": "flash & run FROM ZEPHYR/BUILD",
+            "type": "shell",
+            "command": "arm-none-eabi-gdb",
+            "args": [
+                "--cd=\"${workspaceFolder}/../../zephyr\"",
+                "--se=\"build/zephyr/zephyr.elf\"",
+                "--symbols=build/zephyr/$zephyr.elf",
+                "-x=\"${workspaceFolder}/.vscode/flash.gdb\"",
+                "--ex=\"flash_m4_run ${config:OCD_path} ${config:M4_OCD_interface_file} ${config:M4_OCD_target_file}\"",
+                "--batch"
+            ],
+            "group": "build",
+            "problemMatcher": [],
+            "dependsOn":[]
         },
         {
             "label": "openocd erase flash",
@@ -84,6 +101,23 @@
             "problemMatcher": [],
             "dependsOn":[]
         },
+        {
+			"label": "west erase flash",
+			"type": "shell",
+			"linux": {
+				"command": "${userHome}/zephyrproject/.venv/bin/west"
+			},
+			"windows": {
+				"command": "${userHome}/zephyrproject/.venv/Scripts/west.exe"
+			},
+			"args": [
+				"flash",
+				"--openocd-search=\"${config:MAXIM_PATH}/Tools/OpenOCD/scripts\""
+			],
+			"problemMatcher": [
+				"$gcc"
+			]
+		},
         {
             "label": "openocd (m4)",
             "type": "shell",
