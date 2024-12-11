@@ -18,6 +18,7 @@
 
 #include <zephyr/device.h>
 #include <zephyr/init.h>
+#include <zephyr/drivers/counter.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/uart.h>
 
@@ -41,6 +42,11 @@ extern void zpLED_Init(unsigned int leds_cnt);
 extern int zpLED_Off(unsigned int idx);
 extern void zpLED_Toggle(unsigned int idx);
 
+#define DELAY 						2000000	// 2 secs
+#define ALARM_CHANNEL_ID 			0
+#define COUNTER_TEST_LIMIT			3
+struct counter_alarm_cfg alarm_cfg;
+#define TIMER DT_NODELABEL(counter0)
 static const struct device *const hci_uart_dev =
 	DEVICE_DT_GET(DT_CHOSEN(zephyr_bt_c2h_uart));
 static K_THREAD_STACK_DEFINE(tx_thread_stack, CONFIG_BT_HCI_TX_STACK_SIZE);
@@ -61,6 +67,47 @@ static K_FIFO_DEFINE(uart_tx_queue);
 #define ST_HDR 1	 /* Receiving packet header. */
 #define ST_PAYLOAD 2 /* Receiving packet payload. */
 #define ST_DISCARD 3 /* Dropping packet. */
+
+unsigned int counter_isr_cnt = 0;
+
+static void counter_interrupt_fn(const struct device *counter_dev,
+				      uint8_t chan_id, uint32_t ticks,
+				      void *user_data)
+{
+	struct counter_alarm_cfg *config = user_data;
+	(void)config;
+	uint32_t now_ticks;
+	uint64_t now_usec;
+	int now_sec;
+	int err;
+
+	counter_isr_cnt++;
+	zpLED_Toggle(LED_G);
+	
+	err = counter_get_value(counter_dev, &now_ticks);
+	if (!counter_is_counting_up(counter_dev)) {
+		now_ticks = counter_get_top_value(counter_dev) - now_ticks;
+	}
+
+	if (err) {
+		printk("Failed to read counter value (err %d)", err);
+		return;
+	}
+
+	now_usec = counter_ticks_to_us(counter_dev, now_ticks);
+	now_sec = (int)(now_usec / USEC_PER_SEC);
+
+	printk("Alarm: %d  @ %d secs\n", counter_isr_cnt, now_sec);
+
+	if (counter_isr_cnt < COUNTER_TEST_LIMIT) {
+		err = counter_set_channel_alarm(counter_dev, ALARM_CHANNEL_ID, user_data);
+		if (err != 0) {
+			printk("Alarm could not be set\n");
+		}
+	} else {
+		counter_isr_cnt += COUNTER_TEST_LIMIT;
+	}
+}
 
 /* Length of a discard/flush buffer.
  * This is sized to align with a BLE HCI packet:
@@ -404,18 +451,49 @@ int main(void)
 
 	__ASSERT(hci_uart_dev, "UART device is NULL");
 
-	zpLED_Init(2);
-
-	for (int i = 0; i < 5; ++i)
-	{
-		zpLED_Toggle(LED_R);
-		k_msleep(LIVE_LED_TOGGLE_TIME_MS / 5);
-		zpLED_Toggle(LED_G);
-		k_msleep(LIVE_LED_TOGGLE_TIME_MS / 5);
-	}
-
+	const unsigned int LED_NUM = 2;
+	zpLED_Init(LED_NUM);
 	zpLED_Off(LED_R);
 	zpLED_Off(LED_G);
+
+	for (int i = 0; i < 6; ++i)
+	{
+		zpLED_Toggle(LED_R);
+		k_msleep(LIVE_LED_TOGGLE_TIME_MS / 2);
+	}
+	printk("LED test done!\n");
+
+	/* check timer */
+	const struct device *const counter_dev = DEVICE_DT_GET(TIMER);
+	if (!device_is_ready(counter_dev)) {
+		printk("device not ready.\n");
+		return 1;
+	}
+
+	counter_start(counter_dev);
+
+	alarm_cfg.flags = 0;
+	alarm_cfg.ticks = counter_us_to_ticks(counter_dev, DELAY);
+	alarm_cfg.callback = counter_interrupt_fn;
+	alarm_cfg.user_data = &alarm_cfg;
+
+	err = counter_set_channel_alarm(counter_dev, ALARM_CHANNEL_ID, &alarm_cfg);
+	printk("Set alarm in %u sec (%u ticks)\n",
+	       (uint32_t)(counter_ticks_to_us(counter_dev, alarm_cfg.ticks) / USEC_PER_SEC),
+	       alarm_cfg.ticks);
+
+	if (-EINVAL == err) {
+		printk("Alarm settings invalid\n");
+	} else if (-ENOTSUP == err) {
+		printk("Alarm setting request not supported\n");
+	} else if (err != 0) {
+		printk("Error\n");
+	}
+
+	while (counter_isr_cnt < COUNTER_TEST_LIMIT) {
+		k_msleep(LIVE_LED_TOGGLE_TIME_MS);
+	}
+	printk("Timer test done!\n");
 
 	/* Enable the raw interface, this will in turn open the HCI driver */
 	bt_enable_raw(&rx_queue);
@@ -457,13 +535,17 @@ int main(void)
 					NULL, NULL, NULL, K_PRIO_COOP(7), 0, K_NO_WAIT);
 	k_thread_name_set(&tx_thread_data, "HCI uart TX");
 
+	zpLED_Off(LED_R);
+	zpLED_Off(LED_G);
+	
 	while (1)
 	{
-		zpLED_Toggle(LED_G);
-
 		struct net_buf *buf;
 
 		buf = k_fifo_get(&rx_queue, K_FOREVER);
+		
+		zpLED_Toggle(LED_G);
+		
 		err = h4_send(buf);
 		if (err)
 		{
