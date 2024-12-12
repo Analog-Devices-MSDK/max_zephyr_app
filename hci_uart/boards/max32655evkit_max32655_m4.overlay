@@ -26,8 +26,14 @@
 	status = "okay";
 };
 
+/**
+ * timer<0, 1, 2, 3>
+ */
 &timer0 {
 	status = "okay";
+	/**
+	 * sub-node under timer0
+	 */
 	counter0: counter {
 		status = "okay";
 	};

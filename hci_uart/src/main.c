@@ -39,16 +39,17 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define LED_G						1
 
 extern void zpLED_Init(unsigned int leds_cnt);
+extern int zpLED_On(unsigned int idx);
 extern int zpLED_Off(unsigned int idx);
 extern void zpLED_Toggle(unsigned int idx);
 
-#define DELAY 						2000000	// 2 secs
+#define DELAY 						1000000	// 1 sec
 #define ALARM_CHANNEL_ID 			0
-#define COUNTER_TEST_LIMIT			3
+#define COUNTER_TEST_LIMIT			4
 struct counter_alarm_cfg alarm_cfg;
 #define TIMER DT_NODELABEL(counter0)
-static const struct device *const hci_uart_dev =
-	DEVICE_DT_GET(DT_CHOSEN(zephyr_bt_c2h_uart));
+
+static const struct device *const hci_uart_dev =DEVICE_DT_GET(DT_CHOSEN(zephyr_bt_c2h_uart));
 static K_THREAD_STACK_DEFINE(tx_thread_stack, CONFIG_BT_HCI_TX_STACK_SIZE);
 static struct k_thread tx_thread_data;
 static K_FIFO_DEFINE(tx_queue);
@@ -490,7 +491,8 @@ int main(void)
 		printk("Error\n");
 	}
 
-	while (counter_isr_cnt < COUNTER_TEST_LIMIT) {
+	zpLED_On(LED_G);
+	while (counter_isr_cnt <= COUNTER_TEST_LIMIT) {
 		k_msleep(LIVE_LED_TOGGLE_TIME_MS);
 	}
 	printk("Timer test done!\n");
