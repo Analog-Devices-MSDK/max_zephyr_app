@@ -38,10 +38,10 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define LED_R						0
 #define LED_G						1
 
-extern void zpLED_Init(unsigned int leds_cnt);
-extern int zpLED_On(unsigned int idx);
-extern int zpLED_Off(unsigned int idx);
-extern void zpLED_Toggle(unsigned int idx);
+extern void LED_Init(unsigned int leds_cnt);
+extern int LED_On(unsigned int idx);
+extern int LED_Off(unsigned int idx);
+extern void LED_Toggle(unsigned int idx);
 
 #define DELAY 						1000000	// 1 sec
 #define ALARM_CHANNEL_ID 			0
@@ -83,7 +83,7 @@ static void counter_interrupt_fn(const struct device *counter_dev,
 	int err;
 
 	counter_isr_cnt++;
-	zpLED_Toggle(LED_G);
+	LED_Toggle(LED_G);
 	
 	err = counter_get_value(counter_dev, &now_ticks);
 	if (!counter_is_counting_up(counter_dev)) {
@@ -453,13 +453,13 @@ int main(void)
 	__ASSERT(hci_uart_dev, "UART device is NULL");
 
 	const unsigned int LED_NUM = 2;
-	zpLED_Init(LED_NUM);
-	zpLED_Off(LED_R);
-	zpLED_Off(LED_G);
+	LED_Init(LED_NUM);
+	LED_Off(LED_R);
+	LED_Off(LED_G);
 
 	for (int i = 0; i < 6; ++i)
 	{
-		zpLED_Toggle(LED_R);
+		LED_Toggle(LED_R);
 		k_msleep(LIVE_LED_TOGGLE_TIME_MS / 2);
 	}
 	printk("LED test done!\n");
@@ -491,7 +491,7 @@ int main(void)
 		printk("Error\n");
 	}
 
-	zpLED_On(LED_G);
+	LED_On(LED_G);
 	while (counter_isr_cnt <= COUNTER_TEST_LIMIT) {
 		k_msleep(LIVE_LED_TOGGLE_TIME_MS);
 	}
@@ -537,8 +537,8 @@ int main(void)
 					NULL, NULL, NULL, K_PRIO_COOP(7), 0, K_NO_WAIT);
 	k_thread_name_set(&tx_thread_data, "HCI uart TX");
 
-	zpLED_Off(LED_R);
-	zpLED_Off(LED_G);
+	LED_Off(LED_R);
+	LED_Off(LED_G);
 	
 	while (1)
 	{
@@ -546,7 +546,7 @@ int main(void)
 
 		buf = k_fifo_get(&rx_queue, K_FOREVER);
 		
-		zpLED_Toggle(LED_G);
+		LED_Toggle(LED_G);
 		
 		err = h4_send(buf);
 		if (err)
